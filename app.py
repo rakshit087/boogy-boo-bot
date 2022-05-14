@@ -1,6 +1,9 @@
 from PIL import Image, ImageFont, ImageDraw
 import textwrap
 import sqlite3
+from dotenv import load_dotenv
+
+load_dotenv()
 
 conn = sqlite3.connect('stories.db')
 conn.execute('''CREATE TABLE IF NOT EXISTS stories
