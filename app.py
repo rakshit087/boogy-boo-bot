@@ -1,6 +1,10 @@
 from PIL import Image, ImageFont, ImageDraw
 import textwrap
+import sqlite3
 
+conn = sqlite3.connect('stories.db')
+conn.execute('''CREATE TABLE IF NOT EXISTS stories
+(id INTEGER PRIMARY KEY, story TEXT, author TEXT)''')
 
 def create_image(story):
     # Blank Image with White Border
