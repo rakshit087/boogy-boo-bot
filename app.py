@@ -1,13 +1,16 @@
+import os
 from PIL import Image, ImageFont, ImageDraw
 import textwrap
 import sqlite3
+import praw
 from dotenv import load_dotenv
 
 load_dotenv()
 
 conn = sqlite3.connect('stories.db')
 conn.execute('''CREATE TABLE IF NOT EXISTS stories
-(id INTEGER PRIMARY KEY, story TEXT, author TEXT)''')
+(id TEXT PRIMARY KEY, story TEXT, author TEXT)''')
+
 
 def create_image(story):
     # Blank Image with White Border
@@ -29,6 +32,30 @@ def create_image(story):
     story_lines = textwrap.wrap(story, width=60)
     y_text = int((1280/2)-(len(story_lines)*25))
     for line in story_lines:
-        draw.text((1280/2, y_text), line, font=font, fill=(255,255,255), anchor="ma")
+        draw.text((1280/2, y_text), line, font=font,
+                  fill=(255, 255, 255), anchor="ma")
         y_text += 50
     img.save('output.png')
+
+
+def get_story():
+    reddit = praw.Reddit(
+        client_id=os.getenv('CLIENT_ID'),
+        client_secret=os.getenv('CLIENT_SECRET'),
+        user_agent="Boogy Boo"
+    )
+    # Get top weekly submissions for cute animals
+    submissions = reddit.subreddit('TwoSentenceHorror').top('week', limit=10)
+    for submission in submissions:
+        id = submission.id
+        story = submission.title + " " + submission.selftext
+        author = submission.author.name
+        if conn.execute("SELECT * FROM stories WHERE id=?", (id,)).fetchone() is None:
+            conn.execute(
+                "INSERT OR IGNORE INTO stories VALUES (?, ?, ?)", (id, story, author))
+            conn.commit()
+            return (story, author)
+
+if __name__ == "__main__":
+    story, author = get_story()
+    create_image(story)
