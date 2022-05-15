@@ -13,6 +13,8 @@ load_dotenv()
 conn = sqlite3.connect('stories.db')
 conn.execute('''CREATE TABLE IF NOT EXISTS stories
 (id TEXT PRIMARY KEY, story TEXT, author TEXT)''')
+conn.execute('''CREATE TABLE IF NOT EXISTS instagram
+(id TEXT PRIMARY KEY, token TEXT)''')
 
 
 def create_image(story):
@@ -59,12 +61,38 @@ def get_story():
             conn.commit()
             return (story, author)
 
+
 def upload_to_imgur():
     imgur = ImgurClient(os.getenv('IMGUR_ID'), os.getenv('IMGUR_SECRET'))
     image = imgur.upload_from_path('output.png', anon=True)
     return image['link']
 
+
+def upload_to_instagram(url, caption):
+    r1 = requests.post(
+        f"https://graph.facebook.com/v13.0/{os.environ('IG_PAGE_ID')}/media?image_url={url}&caption={caption}&access_token={os.environ('FB_ACCESS_TOKEN')}")
+    if r1.status_code != 200:
+        exit(r1.json())
+    creation_id = r1.json()['id']
+    r2 = requests.post(
+        f"https://graph.facebook.com/v13.0/{os.environ('IG_PAGE_ID')}/media_publish?creation_id={creation_id}&access_token={os.environ('FB_ACCESS_TOKEN')}")
+    if r2.status_code != 200:
+        exit(r2.json())
+
+
+def is_posted(id):
+    if conn.execute("SELECT * FROM instagram WHERE id=?", (id,)).fetchone() is None:
+        return False
+    return True
+
+
+def update_db(id, story, author):
+    if conn.execute("SELECT * FROM stories WHERE id=?", (id,)).fetchone() is None:
+        conn.execute(
+            "INSERT OR IGNORE INTO stories VALUES (?, ?, ?)", (id, story, author))
+        conn.commit()
+
+
 if __name__ == "__main__":
     story, author = get_story()
     create_image(story)
-
