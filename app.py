@@ -13,9 +13,6 @@ load_dotenv()
 conn = sqlite3.connect('stories.db')
 conn.execute('''CREATE TABLE IF NOT EXISTS stories
 (id TEXT PRIMARY KEY, story TEXT, author TEXT)''')
-conn.execute('''CREATE TABLE IF NOT EXISTS instagram
-(id TEXT PRIMARY KEY, token TEXT)''')
-
 
 def create_image(story):
     # Blank Image with White Border
@@ -33,15 +30,14 @@ def create_image(story):
     draw.text((int((655)-(150)), 1280-55), "@BOOGY.BOO",
               font=font, fill=(255, 255, 255))
     # Adding Story
-    font = ImageFont.truetype('./fonts/Poppins-Regular.ttf', size=34)
+    font = ImageFont.truetype('./fonts/Poppins-Regular.ttf', size=35)
     story_lines = textwrap.wrap(story, width=60)
     y_text = int((1280/2)-(len(story_lines)*25))
     for line in story_lines:
         draw.text((1280/2, y_text), line, font=font,
                   fill=(255, 255, 255), anchor="ma")
         y_text += 50
-    img.save('./static/output.png')
-
+    img.save('output.png')
 
 def get_story():
     reddit = praw.Reddit(
@@ -55,36 +51,34 @@ def get_story():
         id = submission.id
         story = submission.title + " " + submission.selftext
         author = submission.author.name
-        if conn.execute("SELECT * FROM stories WHERE id=?", (id,)).fetchone() is None:
-            conn.execute(
-                "INSERT OR IGNORE INTO stories VALUES (?, ?, ?)", (id, story, author))
-            conn.commit()
-            return (story, author)
-
+        if not is_posted(id):
+            return (id, story, author)
+        else:
+            continue
 
 def upload_to_imgur():
     imgur = ImgurClient(os.getenv('IMGUR_ID'), os.getenv('IMGUR_SECRET'))
     image = imgur.upload_from_path('output.png', anon=True)
     return image['link']
 
-
 def upload_to_instagram(url, caption):
     r1 = requests.post(
-        f"https://graph.facebook.com/v13.0/{os.environ('IG_PAGE_ID')}/media?image_url={url}&caption={caption}&access_token={os.environ('FB_ACCESS_TOKEN')}")
+        f"https://graph.facebook.com/v13.0/{os.getenv('IG_PAGE_ID')}/media?image_url={url}&caption={caption}&access_token={os.getenv('FB_ACCESS_TOKEN')}")
     if r1.status_code != 200:
-        exit(r1.json())
+        print(r1.json())
+        return False
     creation_id = r1.json()['id']
     r2 = requests.post(
-        f"https://graph.facebook.com/v13.0/{os.environ('IG_PAGE_ID')}/media_publish?creation_id={creation_id}&access_token={os.environ('FB_ACCESS_TOKEN')}")
+        f"https://graph.facebook.com/v13.0/{os.getenv('IG_PAGE_ID')}/media_publish?creation_id={creation_id}&access_token={os.getenv('FB_ACCESS_TOKEN')}")
     if r2.status_code != 200:
-        exit(r2.json())
-
-
-def is_posted(id):
-    if conn.execute("SELECT * FROM instagram WHERE id=?", (id,)).fetchone() is None:
+        print(r2.json())
         return False
     return True
 
+def is_posted(id):
+    if conn.execute("SELECT * FROM stories WHERE id=?", (id,)).fetchone() is None:
+        return False
+    return True
 
 def update_db(id, story, author):
     if conn.execute("SELECT * FROM stories WHERE id=?", (id,)).fetchone() is None:
@@ -92,7 +86,12 @@ def update_db(id, story, author):
             "INSERT OR IGNORE INTO stories VALUES (?, ?, ?)", (id, story, author))
         conn.commit()
 
-
 if __name__ == "__main__":
-    story, author = get_story()
+    id, story, author = get_story()
+    time.sleep(5)
     create_image(story)
+    url = upload_to_imgur()
+    time.sleep(5)
+    if upload_to_instagram(url, "Story by r/" + author+"\n\n%23horror %23spooky %23weird %23scary %23creepy %23satan %23fear  %23scare %23creepypicture %23horrorstory %23follow4follow %23like4like %23l4l %23f4f %23photooftheday %23followme %23creepypasta"):
+        update_db(id, story, author)
+        print("Posted to Instagram")
