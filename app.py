@@ -3,7 +3,10 @@ from PIL import Image, ImageFont, ImageDraw
 import textwrap
 import sqlite3
 import praw
+import requests
+import time
 from dotenv import load_dotenv
+from imgurpython import ImgurClient
 
 load_dotenv()
 
@@ -35,13 +38,13 @@ def create_image(story):
         draw.text((1280/2, y_text), line, font=font,
                   fill=(255, 255, 255), anchor="ma")
         y_text += 50
-    img.save('output.png')
+    img.save('./static/output.png')
 
 
 def get_story():
     reddit = praw.Reddit(
-        client_id=os.getenv('CLIENT_ID'),
-        client_secret=os.getenv('CLIENT_SECRET'),
+        client_id=os.getenv('REDDIT_CLIENT_ID'),
+        client_secret=os.getenv('REDDIT_CLIENT_SECRET'),
         user_agent="Boogy Boo"
     )
     # Get top weekly submissions for cute animals
@@ -56,6 +59,12 @@ def get_story():
             conn.commit()
             return (story, author)
 
+def upload_to_imgur():
+    imgur = ImgurClient(os.getenv('IMGUR_ID'), os.getenv('IMGUR_SECRET'))
+    image = imgur.upload_from_path('output.png', anon=True)
+    return image['link']
+
 if __name__ == "__main__":
     story, author = get_story()
     create_image(story)
+
