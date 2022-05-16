@@ -14,29 +14,39 @@ conn = sqlite3.connect('stories.db')
 conn.execute('''CREATE TABLE IF NOT EXISTS stories
 (id TEXT PRIMARY KEY, story TEXT, author TEXT)''')
 
+count = len(conn.execute("SELECT * FROM stories").fetchall())
+bg=''
+fg=''
+if(count%2==0):
+    bg='black'
+    fg='white'
+else:
+    bg='white'
+    fg='black'
+
 def create_image(story):
     # Blank Image with White Border
-    img = Image.new('RGB', (1280, 1280), color='black')
-    border = Image.new('RGB', (1240, 1240), color='white')
+    img = Image.new('RGB', (1280, 1280), color=bg)
+    border = Image.new('RGB', (1240, 1240), color=fg)
     img.paste(border, (20, 20))
-    border = Image.new('RGB', (1200, 1200), color='black')
+    border = Image.new('RGB', (1200, 1200), color=bg)
     img.paste(border, (40, 40))
     # Adding small rectangle at bottom
-    rect = Image.new('RGB', (300, 40), color='black')
-    img.paste(rect, (int((1280/2)-(150)), 1280-40))
+    rect = Image.new('RGB', (400, 40), color=bg)
+    img.paste(rect, (int((1280/2)-(200)), 1280-40))
     # Adding Branding
-    font = ImageFont.truetype('./fonts/Poppins-Bold.ttf', size=36)
+    font = ImageFont.truetype('./fonts/Poppins-Bold.ttf', size=50)
     draw = ImageDraw.Draw(img)
-    draw.text((int((655)-(150)), 1280-55), "@BOOGY.BOO",
-              font=font, fill=(255, 255, 255))
+    draw.text((int((655)-(200)), 1280-70), "@BOOGY.BOO",
+              font=font, fill=fg)
     # Adding Story
-    font = ImageFont.truetype('./fonts/Poppins-Regular.ttf', size=35)
-    story_lines = textwrap.wrap(story, width=60)
+    font = ImageFont.truetype('./fonts/Poppins-Regular.ttf', size=48)
+    story_lines = textwrap.wrap(story, width=40)
     y_text = int((1280/2)-(len(story_lines)*25))
     for line in story_lines:
         draw.text((1280/2, y_text), line, font=font,
-                  fill=(255, 255, 255), anchor="ma")
-        y_text += 50
+                  fill=fg, anchor="ma")
+        y_text += 55
     img.save('output.png')
 
 def get_story():
